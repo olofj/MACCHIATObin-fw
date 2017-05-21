@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PWD=`pwd`
+TOP=${PWD}
 
 BUILD_TYPE=RELEASE
 GCC_DIR=${PWD}/gcc/
@@ -8,6 +9,7 @@ ATF_DIR=${PWD}/atf/
 MV_DDR_DIR=${PWD}/mv_ddr/
 EDK2_DIR=${PWD}/edk2/
 EDK2_PLATFORM_DIR=${PWD}/OpenPlatformPkg/
+UBOOT_DIR=${PWD}/uboot/
 
 GCC_RELEASE=gcc-linaro-5.3.1-2016.05-x86_64_aarch64-linux-gnu
 GCC_FILE=${GCC_RELEASE}.tar.xz
@@ -22,6 +24,9 @@ ATF_BRANCH=atf-v1.3-armada-17.06
 
 MV_DDR_REPO=https://github.com/MarvellEmbeddedProcessors/mv-ddr-marvell.git
 MV_DDR_BRANCH=mv_ddr-armada-17.06
+
+UBOOT_REPO=https://github.com/MarvellEmbeddedProcessors/u-boot-marvell
+UBOOT_BRANCH=u-boot-2017.03-armada-17.06
 
 ### GCC
 if [ ! -d "${GCC_DIR}" ]; then
@@ -118,7 +123,39 @@ fi
 
 ### Build ATF
 cd "${ATF_DIR}"
+make clean
 make USE_COHERENT_MEM=0 LOG_LEVEL=20 MV_DDR_PATH="${MV_DDR_DIR}" PLAT=a80x0_mcbin all fip
 
-ls build/a80x0_mcbin/release/
+cp "${ATF_DIR}/build/a80x0_mcbin/release/flash-image.bin" "${TOP}/edk2-flash-image.bin"
 
+
+### Checkout u-boot
+if [ ! -d "${UBOOT_DIR}" ]; then
+    mkdir -p "${UBOOT_DIR}"
+fi
+
+cd "${UBOOT_DIR}"
+if [ ! -d ".git" ]; then
+    git clone "${UBOOT_REPO}" .
+fi
+
+branch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+git pull -q
+
+if [[ "${branch}" != ${UBOOT_BRANCH} ]]; then
+    git checkout -b ${UBOOT_BRANCH} origin/${UBOOT_BRANCH}
+fi
+
+cd "${UBOOT_DIR}"
+make mvebu_mcbin-88f8040_defconfig
+make
+ls u-boot*
+
+export BL33="${UBOOT_DIR}/u-boot.bin"
+
+cd "${ATF_DIR}"
+make clean
+make USE_COHERENT_MEM=0 LOG_LEVEL=20 MV_DDR_PATH="${MV_DDR_DIR}" PLAT=a80x0_mcbin all fip
+
+cp "${ATF_DIR}"/build/a80x0_mcbin/release/flash-image.bin "${TOP}/u-boot-flash-image.bin"
+ls -al "${TOP}/"*flash-image.bin
