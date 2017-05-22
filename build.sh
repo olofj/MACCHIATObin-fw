@@ -10,6 +10,7 @@ MV_DDR_DIR=${PWD}/mv_ddr/
 EDK2_DIR=${PWD}/edk2/
 EDK2_PLATFORM_DIR=${PWD}/OpenPlatformPkg/
 UBOOT_DIR=${PWD}/uboot/
+PM_DIR=${PWD}/pm/
 
 GCC_RELEASE=gcc-linaro-5.3.1-2016.05-x86_64_aarch64-linux-gnu
 GCC_FILE=${GCC_RELEASE}.tar.xz
@@ -27,6 +28,20 @@ MV_DDR_BRANCH=mv_ddr-armada-17.06
 
 UBOOT_REPO=https://github.com/MarvellEmbeddedProcessors/u-boot-marvell
 UBOOT_BRANCH=u-boot-2017.03-armada-17.06
+
+PM_URL=http://wiki.macchiatobin.net/tiki-download_file.php?fileId=28
+PM_BINARY=RTOSDemo-cm3.bin
+
+### Power Mangament binary
+if [ ! -d "${PM_DIR}" ]; then
+    # Install cross-compiler
+    mkdir -p "${PM_DIR}"
+fi
+
+if [ ! -e "${PM_DIR}/${PM_BINARY}" ]; then
+	wget -c "${PM_URL}" -o "${PM_DIR}/${PM_BINARY}"
+fi
+export SCP_BL2="${PM_DIR}/${PM_BINARY}"
 
 ### GCC
 if [ ! -d "${GCC_DIR}" ]; then
