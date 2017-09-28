@@ -21,16 +21,17 @@ EDK2_PLATFORM_REPO=https://github.com/MarvellEmbeddedProcessors/edk2-open-platfo
 EDK2_PLATFORM_BRANCH=marvell-armada-wip
 
 ATF_REPO=https://github.com/MarvellEmbeddedProcessors/atf-marvell.git
-ATF_BRANCH=atf-v1.3-armada-17.06
+ATF_BRANCH=atf-v1.3-armada-17.10
 
 MV_DDR_REPO=https://github.com/MarvellEmbeddedProcessors/mv-ddr-marvell.git
-MV_DDR_BRANCH=mv_ddr-armada-17.06
+MV_DDR_BRANCH=mv_ddr-armada-17.10
 
 UBOOT_REPO=https://github.com/MarvellEmbeddedProcessors/u-boot-marvell
-UBOOT_BRANCH=u-boot-2017.03-armada-17.06
+UBOOT_BRANCH=u-boot-2017.03-armada-17.10
 
-PM_URL=http://wiki.macchiatobin.net/tiki-download_file.php?fileId=28
-PM_BINARY=RTOSDemo-cm3.bin
+PM_REPO=https://github.com/MarvellEmbeddedProcessors/binaries-marvell
+PM_BRANCH=binaries-marvell-armada-17.10
+PM_BINARY=mrvl_scp_bl2_8040.img
 
 ### Power Mangament binary
 if [ ! -d "${PM_DIR}" ]; then
@@ -38,9 +39,16 @@ if [ ! -d "${PM_DIR}" ]; then
     mkdir -p "${PM_DIR}"
 fi
 
-if [ ! -e "${PM_DIR}/${PM_BINARY}" ]; then
-	wget -c "${PM_URL}" -o "${PM_DIR}/${PM_BINARY}"
+if [ ! -d .git ]; then
+    git clone "${PM_REPO}" .
 fi
+branch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+git pull -q
+
+if [[ "${branch}" != ${PM_BRANCH} ]]; then
+    git checkout -b ${PM_BRANCH} origin/${PM_BRANCH}
+fi
+
 export SCP_BL2="${PM_DIR}/${PM_BINARY}"
 
 ### GCC
