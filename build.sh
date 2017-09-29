@@ -11,6 +11,9 @@ EDK2_DIR=${PWD}/edk2/
 EDK2_PLATFORM_DIR=${PWD}/OpenPlatformPkg/
 UBOOT_DIR=${PWD}/uboot/
 PM_DIR=${PWD}/pm/
+LINUX_DIR=${PWD}/linux/
+
+VERSION=17.10
 
 GCC_RELEASE=gcc-linaro-5.3.1-2016.05-x86_64_aarch64-linux-gnu
 GCC_FILE=${GCC_RELEASE}.tar.xz
@@ -21,17 +24,22 @@ EDK2_PLATFORM_REPO=https://github.com/MarvellEmbeddedProcessors/edk2-open-platfo
 EDK2_PLATFORM_BRANCH=marvell-armada-wip
 
 ATF_REPO=https://github.com/MarvellEmbeddedProcessors/atf-marvell.git
-ATF_BRANCH=atf-v1.3-armada-17.10
+ATF_BRANCH=atf-v1.3-armada-${VERSION}
 
 MV_DDR_REPO=https://github.com/MarvellEmbeddedProcessors/mv-ddr-marvell.git
-MV_DDR_BRANCH=mv_ddr-armada-17.10
+MV_DDR_BRANCH=mv_ddr-armada-${VERSION}
 
 UBOOT_REPO=https://github.com/MarvellEmbeddedProcessors/u-boot-marvell
-UBOOT_BRANCH=u-boot-2017.03-armada-17.10
+UBOOT_BRANCH=u-boot-2017.03-armada-${VERSION}
 
 PM_REPO=https://github.com/MarvellEmbeddedProcessors/binaries-marvell
-PM_BRANCH=binaries-marvell-armada-17.10
+PM_BRANCH=binaries-marvell-armada-${VERSION}
 PM_BINARY=mrvl_scp_bl2_8040.img
+
+LINUX_REPO=https://github.com/MarvellEmbeddedProcessors/linux-marvell/ 
+LINUX_BRANCH=linux-4.4.52-armada-${VERSION}
+LINUX_CONFIG=mvebu_v8_lsp_defconfig
+LINUX_DTB=armada-8040-mcbin.dtb
 
 ### Power Mangament binary
 if [ ! -d "${PM_DIR}" ]; then
@@ -39,6 +47,7 @@ if [ ! -d "${PM_DIR}" ]; then
     mkdir -p "${PM_DIR}"
 fi
 
+cd "${PM_DIR}"
 if [ ! -d .git ]; then
     git clone "${PM_REPO}" .
 fi
@@ -181,4 +190,30 @@ make clean
 make USE_COHERENT_MEM=0 LOG_LEVEL=20 MV_DDR_PATH="${MV_DDR_DIR}" PLAT=a80x0_mcbin all fip
 
 cp "${ATF_DIR}"/build/a80x0_mcbin/release/flash-image.bin "${TOP}/u-boot-flash-image.bin"
-ls -al "${TOP}/"*flash-image.bin
+
+### Kernel build
+if [ ! -d "${LINUX_DIR}" ]; then
+    mkdir -p "${LINUX_DIR}"
+fi
+
+cd "${LINUX_DIR}"
+if [ ! -d ".git" ]; then
+    git clone "${LINUX_REPO}" .
+fi
+
+branch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+git pull -q
+
+if [[ "${branch}" != ${LINUX_BRANCH} ]]; then
+    git checkout -b ${LINUX_BRANCH} origin/${LINUX_BRANCH}
+fi
+
+cp defconfig arch/arm64/configs/${LINUX_CONFIG}
+make "${LINUX_CONFIG}"
+make -j $(( $(getconf _NPROCESSORS_ONLN) + 1 ))
+ls arch/arm64/boot/{Image,dts/marvell/${LINUX_DTB}}
+
+cp "${LINUX_DIR}"arch/arm64/boot/{Image,dts/marvell/${LINUX_DTB}} ${TOP}/
+
+
+ls -al "${TOP}/"*flash-image.bin "${TOP}/"Image "${TOP}/${LINUX_DTB}"
